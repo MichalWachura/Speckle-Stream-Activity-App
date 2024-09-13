@@ -69,11 +69,11 @@ with input:
     branches = client.branch.list(stream.id)
     #stream Commits 🏹
     commits = client.commit.list(stream.id,limit=100)
-    st.write(stream)
+   
     #------
 #--------------------
 #DEFINITIONS
-#python list to markdown lists
+#python list to markdown lists (already provided)
 def listToMarkdown(list,column):
      list = ["-"+ i + "\n" for i in list]
      list = "".join(list)
@@ -83,7 +83,7 @@ def listToMarkdown(list,column):
 #--------------------
 def commit2viewer():
        embed_src = "https://app.speckle.systems/projects/8e72066ad8/models/31db6b4639#embed=%7B%22isEnabled%22%3Atrue%7D"
-       st.write(embed_src)
+       
        return st.components.v1.iframe(src = embed_src,height=400)
 
 
@@ -124,15 +124,73 @@ with report:
 
     #Connector Carts💳
     #connector list
-    conncetorList = len([c.sourceApplication for c in commits])
-    connectorCol.metric(label="Number of Connectors", value = conncetorList)
-    #st.write([c.sourceApplication for c in commits])
+    connectorList = [c.sourceApplication for c in commits]
+    #conectors names
+    connectorNames = list(dict.fromkeys(connectorList))
+    connectorCol.metric(label="Number of Connectors ", value = len(dict.fromkeys(connectorList)))
+    listToMarkdown(connectorNames,connectorCol)
     #------
 
     #------
     #Contributor Carts💳
     contributorCol.metric(label="Number of Contributtors ", value = len(stream.collaborators))
+    #contributors name
+    contributorsName = list(dict.fromkeys([col.name for col in stream.collaborators]))
+    #contributor list
+    listToMarkdown(contributorsName,contributorCol)
     #------
+
+#--------------------
+with graphs:
+     st.subheader("Graphs")
+     #columns for Charts
+     branch_graph_col,connector_graph_col,collaborator_graph_col = st.columns([2,1,1])
+    #------
+    #branch graph📊
+     branch_counts = pd.DataFrame([[b.name,b.commits.totalCount] for b in branches])
+    #rename clumns 
+     branch_counts.columns = ['branchName',"totalCommits"]
+    #create graph 
+     branch_count_graph = px.bar(branch_counts,x = branch_counts.branchName, y= branch_counts.totalCommits,color = branch_counts.branchName)
+     branch_count_graph.update_layout(showlegend = False,height=220,margin = dict(l=1,r=1,t=1,b=1))
+     branch_graph_col.plotly_chart(branch_count_graph,use_container_width=True)
+    #------
+
+    #------
+    #Connector Chart
+     commits = pd.DataFrame.from_dict([c.dict() for c in commits])
+    #get apps form data frame
+     apps = commits['sourceApplication']
+    #reset index apps
+     apps = apps.value_counts().reset_index()
+     #rename columns
+     apps.columns = ["app","count"]
+     #donut chart
+     fig = px.pie(apps,names=apps['app'],values = apps['count'],hole=0.5 )
+     fig.update_layout(
+          showlegend = False,
+          margin=dict(l=2,r=2,t=2,b=2),
+          height = 200
+        )
+     connector_graph_col.plotly_chart(fig,use_container_width=True)
+    #------
+    #------
+    #Collaborator Chart
+     authors = commits["authorName"].value_counts().reset_index()
+     #rename columns
+     authors.columns = ['author','count']
+     #create chart
+     authorFig = px.pie(authors,names=authors['author'],values=authors['count'],hole=0.5)
+     authorFig.update_layout(
+          showlegend = False,
+          margin=dict(l=1,r=1,t=1,b=1),
+          height = 200
+        )
+     collaborator_graph_col.plotly_chart(authorFig,use_container_width=True)
+    #------
+
+
+
 
 
 #--------------------
